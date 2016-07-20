@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include "falco_engine.h"
+#include "config_falco_engine.h"
 
 extern "C" {
 #include "lpeg.h"
@@ -17,6 +18,7 @@ string lua_print_stats = "print_stats";
 using namespace std;
 
 falco_engine::falco_engine()
+	: m_rules(NULL)
 {
 
 }
@@ -40,7 +42,7 @@ void falco_engine::load_rules(string &rules_content, bool verbose)
 	luaopen_lpeg(m_ls);
 	luaopen_yaml(m_ls);
 
-	falco_common::init(m_lua_main_filename);
+	falco_common::init(m_lua_main_filename.c_str(), FALCO_ENGINE_SOURCE_LUA_DIR);
 	falco_rules::init(m_ls);
 
 	m_rules = new falco_rules(m_inspector, this, m_ls);
