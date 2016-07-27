@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <unistd.h>
 #include <string>
 #include <fstream>
 
@@ -17,10 +19,13 @@ string lua_print_stats = "print_stats";
 
 using namespace std;
 
-falco_engine::falco_engine()
-	: m_rules(NULL)
+falco_engine::falco_engine(bool seed_rng)
+	: m_rules(NULL), m_sampling_ratio(1), m_sampling_multiplier(0)
 {
-
+	if(seed_rng)
+	{
+		srandom((unsigned) getpid());
+	}
 }
 
 falco_engine::~falco_engine()
@@ -69,6 +74,12 @@ void falco_engine::load_rules_file(string &rules_filename, bool verbose)
 
 falco_engine::rule_result *falco_engine::process_event(sinsp_evt *ev)
 {
+
+	if(should_drop_evt())
+	{
+		return NULL;
+	}
+
 	if(!m_evttype_filter.run(ev))
 	{
 		return NULL;
@@ -135,4 +146,28 @@ void falco_engine::add_evttype_filter(list<uint32_t> &evttypes,
 	m_evttype_filter.add(evttypes, filter);
 }
 
+void falco_engine::set_sampling_ratio(uint32_t sampling_ratio)
+{
+	m_sampling_ratio = sampling_ratio;
+}
 
+void falco_engine::set_sampling_multiplier(double sampling_multiplier)
+{
+	m_sampling_multiplier = sampling_multiplier;
+}
+
+inline bool falco_engine::should_drop_evt()
+{
+	if(m_sampling_multiplier == 0)
+	{
+		return false;
+	}
+
+	if(m_sampling_ratio == 1)
+	{
+		return false;
+	}
+
+	double coin = (random() * (1.0/RAND_MAX));
+	return (coin >= (1.0/(m_sampling_multiplier * m_sampling_ratio)));
+}
